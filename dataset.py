@@ -5,25 +5,26 @@ from torch.utils.data import Dataset
 import random
 
 """
-dataset.py中的关键设计：
+Key Design in dataset.py:
 
-    1.动态批处理（BatchedSleepDataset）：
-       * 问题根源：不同受试者记录时长不同：以30秒为一个epoch，个体睡眠数据的epoch数量不同）
-       * 解决方案：通过minibatch_size参数控制每个样本包含的epoch数量(连续睡眠片段)
-       * 实现机制：
-        - reshuffle()方法为每个受试者生成随机偏移量（shift）
-        - 通过(start_idx:start_idx + minibatch_size)截取连续片段
-        - 优势：保持时序连续性同时实现批规范化
+    1. Dynamic Batching (BatchedSleepDataset):
+       * Core Issue: Variable recording durations across subjects (30-second epochs)
+       * Solution: Control continuous epoch count per sample via minibatch_size
+       * Implementation:
+        - reshuffle() generates random offset (shift) per subject
+        - Extract continuous segments via (start_idx:start_idx + minibatch_size)
+        - Benefits: Maintain temporal continuity with batch normalization
 
-    2.随机位移（reshuffle）：
-        * max_skip = 5 * minibatch_size + subj_data.shape[0] % minibatch_size cur_skip = random.randint(0, max_skip)
-        * 作用：每个epoch重新随机选择数据起始点
-        * 效果：防止模型记忆固定数据顺序，增强泛化能力
+    2. Random Shifting (reshuffle):
+        * max_skip = 5*minibatch_size + subj_data.shape[0] % minibatch_size
+          cur_skip = random.randint(0, max_skip)
+        * Purpose: Randomize starting point selection each epoch
+        * Benefit: Prevent model from memorizing fixed order, enhance generalization
     
-    3.维度扩展（unsqueeze）：
-        * 原始数据维度：[minibatch_size, 3000]（3000=30秒×100Hz）
-        * unsqueeze(1)后：[minibatch_size, 1, 3000]
-        * 原因：适配PyTorch Conv1d层的输入要求（通道维度在前）
+    3. Dimension Expansion (unsqueeze):
+        * Original data shape: [minibatch_size, 3000] (3000=30s×100Hz)
+        * After unsqueeze(1): [minibatch_size, 1, 3000]
+        * Reason: Match PyTorch Conv1d input requirements (channel dimension first)
 """
 
 def load_sleep_data(data_path='preprocessed'):
@@ -41,22 +42,18 @@ def load_sleep_data(data_path='preprocessed'):
 
 class BatchedSleepDataset(Dataset):
     def __init__(self, data, labels, minibatch_size=20):
-        """动态批处理数据集
+        """Dynamic batching dataset for sleep stage classification
         
-        参数：
-            data: 多受试者的EEG信号列表 [n_subj][n_epochs, 3000]
-            labels: 对应睡眠阶段标签 [n_subj][n_epochs]
-            minibatch_size: 每个样本包含的连续睡眠时段数（默认30秒×20=10分钟）
-        
-        设计特点：
-        1. 随机位移：每个epoch重置起始点防止过拟合
-        2. 连续采样：保持睡眠阶段的时序连续性
-        3. 动态长度：自动适配不同受试者的数据长度差异
+        Parameters:
+            data: List of EEG signals for multiple subjects [n_subj][n_epochs, 3000]
+            labels: Corresponding sleep stage labels [n_subj][n_epochs]
+            minibatch_size: Number of consecutive sleep epochs per sample (default 20 = 30s×20=10min)
+            
         """
         self.data = data
         self.labels = labels
         self.minibatch_size = minibatch_size
-        self.reshuffle()  # 初始化随机位移参数
+        self.reshuffle()  # Initialize random shift parameters
 
     def reshuffle(self):
         

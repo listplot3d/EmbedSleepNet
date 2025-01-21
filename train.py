@@ -10,7 +10,7 @@ from model import TinySleepNet, EmbedSleepNet
 from lightning_wrapper import LightningWrapper
 
 if __name__ == '__main__':
-    # 添加命令行参数解析
+    # Command line argument parsing
     parser = argparse.ArgumentParser(description='Training the model')
     parser.add_argument('--flavor', choices=['embed', 'tiny'], required=True, help='Choose model type: embed or tiny')
     parser.add_argument('--epochs', type=int, default=450, help='Number of epochs to train the model')
@@ -18,10 +18,10 @@ if __name__ == '__main__':
     parser.add_argument('--resume_from', type=str, default=None, help='Path to the checkpoint file to resume from')
     args = parser.parse_args()
 
-    # 设置随机种子
+    # Set random seed
     random.seed(42)
 
-    # 初始化模型
+    # Initialize the model
     if args.flavor == 'tiny':
         net = TinySleepNet()
     else:
@@ -29,21 +29,23 @@ if __name__ == '__main__':
 
     model = LightningWrapper(net)
 
-    # 检查点回调配置优化
+    # Configure checkpoint callback
     checkpoint_callback = ModelCheckpoint(
         monitor='val_acc',
-        dirpath='checkpoints/',  # 创建专用检查点目录
-        filename=f'{args.model_name}-{{epoch:03d}}-{{val_acc:.2f}}',  # 包含epoch和准确率
-        save_top_k=3,  # 保留最佳3个检查点
+        dirpath='checkpoints/',  # Dedicated checkpoint directory
+        filename=f'{args.model_name}-{{epoch:03d}}-{{val_acc:.2f}}',  # Include epoch and accuracy
+        save_top_k=3,  # Keep top 3 checkpoints
         mode='max',
-        save_last=True,  # 额外保存最后epoch的检查点
-        auto_insert_metric_name=False  # 美化文件名
+        save_last=True,  # Additionally save the checkpoint of the last epoch
+        auto_insert_metric_name=False  # Beautify file name
     )
 
-    # 初始化日志记录器
-    tb_logger = pl_loggers.TensorBoardLogger('d:/logs/')
+    # Initialize the logger
+    logger_dir = 'd:/logs/' #specify absolute path here
+    tb_logger = pl_loggers.TensorBoardLogger(logger_dir) 
+    print("* Logging files are saved here:",logger_dir)
 
-    # 初始化 Trainer
+    # Initialize the Trainer
     trainer = pl.Trainer(
         logger=tb_logger,
         callbacks=[checkpoint_callback],
@@ -52,7 +54,7 @@ if __name__ == '__main__':
         max_epochs=args.epochs
     )
 
-    # 从 checkpoint 文件继续训练
+    # Resume training from checkpoint file
     if args.resume_from:
         print(f"Resuming training from checkpoint: {args.resume_from}")
         trainer.fit(model, ckpt_path=args.resume_from)
@@ -60,5 +62,5 @@ if __name__ == '__main__':
         print("Starting training from scratch.")
         trainer.fit(model)
 
-    # 打印最终模型的准确率
+    # Print the final model accuracy
     print(f'Saved model accuracy {model.max_acc * 100}%')
