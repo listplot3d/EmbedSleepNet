@@ -49,7 +49,7 @@ if __name__ == '__main__':
     trainer = pl.Trainer(
         logger=tb_logger,
         callbacks=[checkpoint_callback],
-        reload_dataloaders_every_n_epochs=10,
+        reload_dataloaders_every_n_epochs=10,  # Refresh data augmentations every 10 epochs
         accelerator="auto",
         max_epochs=args.epochs
     )
@@ -64,3 +64,6 @@ if __name__ == '__main__':
 
     # Print the final model accuracy
     print(f'Saved model accuracy {model.max_acc * 100}%')
+    
+    # save model
+    torch.save(model.net.state_dict(), f'final_{args.model_name}.pth')
