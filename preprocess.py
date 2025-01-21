@@ -91,7 +91,7 @@ def preprocess(data_path, out_path='preprocessed', selected_ch='EEG Fpz-Cz'):
             duration_epoch = int(duration_sec / epoch_duration)
 
             # Generate sleep stage labels
-            label_epoch = np.ones(duration_epoch, dtype=np.int) * label
+            label_epoch = np.ones(duration_epoch, dtype=np.int32) * label
             labels.append(label_epoch)
 
             total_duration += duration_sec
